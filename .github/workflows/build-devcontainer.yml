@@ -50,17 +50,11 @@ jobs:
       - name: Smoke test - Sonata simulator
         run: docker run --rm ghcr.io/cheriot-platform/devcontainer:${{ matrix.docker_arch }}-latest /bin/sh -c "cd /tmp/ && git clone --recurse https://github.com/cheriot-platform/cheriot-rtos && cd cheriot-rtos/examples/01.hello_world && xmake f --sdk=/cheriot-tools --board=sonata-simulator -m release --testing-model-output=y && xmake && xmake run"
 
-      - name: Login to container registry
-        if: github.ref == 'refs/heads/main'
-        uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Push arch-specific image
         if: github.ref == 'refs/heads/main'
-        run: docker push ghcr.io/cheriot-platform/devcontainer:${{ matrix.docker_arch }}-latest
+        run: |
+          echo ${{ secrets.GITHUB_TOKEN } | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+          docker push ghcr.io/cheriot-platform/devcontainer:${{ matrix.docker_arch }}-latest
 
   manifest:
     name: Create and push multi-arch manifest
@@ -72,16 +66,11 @@ jobs:
       packages: write
 
     steps:
-      - name: Login to container registry
-        uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Create and push manifests
         run: |
           DATE_TAG=$(date +%Y-%m-%d.%H.%M)
+
+          echo ${{ secrets.GITHUB_TOKEN } | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
 
           docker manifest create ghcr.io/cheriot-platform/devcontainer:latest \
             --amend ghcr.io/cheriot-platform/devcontainer:x86_64-latest \
